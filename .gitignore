@@ -46,3 +46,10 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Local API credentials
+config.json
+config.local.json
+.env
+.env.*
+!.env.example

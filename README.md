@@ -1,17 +1,106 @@
-# cat_tinder
+# Кототиндер
 
-Kototinder - Flutter HW1
+## 1. Описание приложения
 
-## Getting Started
+Учебное Flutter-приложение со случайными котами из TheCatAPI.
+Сейчас реализован первый рабочий этап — лента карточек.
 
-This project is a starting point for a Flutter application.
+## 2. Выполненный функционал
 
-A few resources to get you started if this is your first Flutter project:
+- Реальные фото и сведения о породе из TheCatAPI; демонстрационных котов нет.
+- Лайк и пропуск кнопками и горизонтальными свайпами, счётчик лайков.
+- Действия доступны после загрузки фотографии; повторные быстрые действия защищены.
+- Загрузка, ошибки сети, таймаут, HTTP-ошибки, некорректные данные и отсутствие породы.
+- Ошибка фотографии и её повтор для того же кота; повтор не начисляет новый лайк.
+- Понятное сообщение при отсутствующем или неверном ключе.
+- Прокручиваемая карточка, адаптация к узкому экрану и увеличенному тексту.
+- Конфигурация API через `--dart-define`; разрешения сети для Android и macOS.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## 3. Невыполненный функционал и известные проблемы
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Это промежуточная версия, не готовая сдача ДЗ.
+Не реализованы детали кота, каталог и детали пород, вкладки, собственная иконка.
+Нет финальных медиа, APK и GitHub Release.
+Лайки хранятся в памяти и сбрасываются после полного перезапуска приложения.
+
+Реальный API-ключ ещё не добавлен: до этого приложение показывает инструкцию
+подключения. Сквозной сценарий с авторизованным TheCatAPI ещё не проверен.
+Тестовые ответы и изображения находятся только в `test/` и не подменяют данные приложения.
+Android-сборка пока блокируется отсутствующим Android SDK в текущем окружении.
+
+## 4. Скриншоты и/или видео
+
+Финальные медиа ещё не подготовлены. Снимки для сдачи будут сделаны на версии
+с работающим ключом и будут включать основные сценарии и состояние ошибки.
+
+## 5. APK
+
+Release APK и ссылка на GitHub Release пока отсутствуют.
+
+## 6. Запуск и проверки
+
+Окружение разработки: Flutter 3.47.9, Dart 3.13.7.
+Команды выполняются из каталога с `pubspec.yaml`.
+
+1. Выполните `flutter pub get`.
+2. В локальном `config.json` замените `PASTE_YOUR_CAT_API_KEY_HERE` своим ключом.
+   Если файла нет, создайте его копированием `config.example.json`.
+   `config.json` исключён из Git. Ключ не нужно добавлять в исходники или README.
+3. Запустите выбранную платформу:
+
+```sh
+flutter run -d macos --dart-define-from-file=config.json
+# Или Web:
+flutter run -d chrome --dart-define-from-file=config.json
+```
+
+В IDEA: Run → Edit Configurations → конфигурация Flutter → Additional run args:
+`--dart-define-from-file=config.json`. Рабочая папка — каталог с `pubspec.yaml`.
+После изменения ключа или базового URL остановите приложение и запустите заново:
+hot reload не меняет значения `--dart-define`.
+
+Без ключа или с маркером из примера приложение открывается с инструкцией подключения
+и не делает заведомо неавторизованные запросы.
+Адрес по умолчанию — `https://api.thecatapi.com/v1`; его можно заменить полем
+`CAT_API_BASE_URL` в локальном конфигурационном файле. Нужен HTTPS-адрес.
+Фотографии загружаются штатными средствами Flutter; Web использует HTML-изображения,
+поскольку CDN не разрешает чтение байтов через CORS. Ключ фотографиям не передаётся.
+
+Команды проверок и сборки:
+
+```sh
+dart format --output=none --set-exit-if-changed .
+flutter analyze
+flutter test
+flutter build web --release --dart-define-from-file=config.json
+flutter build macos --release --dart-define-from-file=config.json
+flutter build apk --release --dart-define-from-file=config.json
+```
+
+Для сборки без личного файла конфигурации можно передать параметры напрямую:
+
+```sh
+flutter build apk --release --dart-define=CAT_API_KEY=YOUR_KEY --dart-define=CAT_API_BASE_URL=https://api.thecatapi.com/v1
+```
+
+Фактические результаты и ограничения указаны в [журнале проверок](docs/QUALITY_GATES.md).
+В установленной версии Flutter запуск `flutter analyze` из пути с кириллицей
+падает внутри обмена сообщениями SDK. `dart analyze --fatal-infos lib test` работает;
+`flutter analyze` также проверен через временную ASCII-ссылку на тот же проект.
+Код SDK и расположение проекта для этого не менялись.
+
+## 7. Устройство приложения — своими словами, без ИИ
+
+Автор заполнит этот раздел самостоятельно после разбора реализации:
+5–10 предложений о состоянии, пути лайка, запросах и обработке ошибок.
+Этот раздел ещё не выполнен; сгенерированное объяснение вместо автора не вставлено.
+
+## 8. Траектория и использование ИИ
+
+Траектория: с агентом Codex. Агент подготовил документы процесса, первый этап
+приложения и тесты. Автор определяет поведение, изучает изменения и проводит ревью.
+
+- [Спецификация](docs/SPEC.md), записанная в Git до реализации.
+- [Quality gates, фактические проверки и ревью](docs/QUALITY_GATES.md).
+
+Ревью реализации автором ещё не проводилось. Самопроверка агента его не заменяет.
