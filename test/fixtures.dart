@@ -9,6 +9,22 @@ final Uint8List photoBytes = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGMQK80EIgYIBQAZcgPRDk0bKwAAAABJRU5ErkJggg==',
 );
 
+Map<String, Object?> breedJson(String id, String name) => {
+  'id': id,
+  'name': name,
+  'origin': 'Egypt',
+  'temperament': 'Active, Curious',
+  'description': 'A curious and active cat.',
+  'life_span': '12 - 15',
+  'breed_group': 'Short-haired',
+  'history': 'A long breed history.',
+  'weight': {'metric': '3 - 5', 'imperial': '7 - 11'},
+  'intelligence': 4,
+  'energy_level': 5,
+  'hairless': 0,
+  'natural': true,
+};
+
 Map<String, Object?> catJson(String id) => {
   'id': id,
   'url': 'https://images.example.test/$id.png',

@@ -15,20 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'fixtures.dart';
-
-// Image codecs run outside the fake test clock. Yield a real frame between
-// pumps so decoding can finish before testing the resulting interactions.
-Future<void> settle(WidgetTester tester) async {
-  await tester.runAsync(() async {
-    final deadline = DateTime.now().add(const Duration(seconds: 5));
-    do {
-      await Future<void>.delayed(const Duration(milliseconds: 16));
-      await tester.pump(const Duration(milliseconds: 16));
-      if (!tester.binding.hasScheduledFrame) return;
-    } while (DateTime.now().isBefore(deadline));
-    fail('The screen did not settle within five seconds');
-  });
-}
+import 'test_helpers.dart';
 
 void main() {
   CatApi apiFor(Future<http.Response> Function(http.Request) handler) {
@@ -262,7 +249,7 @@ void main() {
       await mount(tester, restartedApi, store: store);
       expect(counter(tester), '♥ 1');
       final image = tester.widget<Image>(find.byType(Image));
-      expect(image.semanticLabel, 'Кот породы Abyssinian');
+      expect(image.semanticLabel, 'Открыть сведения о коте породы Abyssinian');
       expect((await store.read()).cat?.id, 'cat-2');
       expect(searches, 2);
       expect(find.byKey(const Key('cat_card')), findsOneWidget);

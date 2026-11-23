@@ -8,6 +8,8 @@ import '../services/cat_api.dart';
 import '../services/feed_store.dart';
 import '../widgets/cat_card.dart';
 import '../widgets/status_panel.dart';
+import 'breed_details_screen.dart';
+import 'breeds_screen.dart';
 
 enum _FeedPhase { loading, ready, error }
 
@@ -37,6 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _requestInFlight = false;
   bool _restored = false;
   bool _resetDialogOpen = false;
+  bool _detailsOpen = false;
+  int _selectedTab = 0;
 
   @override
   void initState() {
@@ -64,7 +68,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _prepareCat(Cat? candidate) async {
     await widget.api.ensureAccess();
     if (!mounted) return;
-    final cat = candidate ?? await widget.api.fetchRandomCat();
+    final loaded = candidate ?? await widget.api.fetchRandomCat();
+    final cat = loaded.breed.id == null
+        ? widget.api.completeCat(loaded)
+        : loaded;
     if (!mounted) return;
     _retryAction = () => _loadCat(candidate: cat);
     if (!identical(_snapshot.cat, cat)) {
@@ -148,8 +155,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _vote(Cat cat, {required bool liked}) {
-    if (_phase != _FeedPhase.ready || !identical(_snapshot.cat, cat)) return;
+    if (_detailsOpen ||
+        _phase != _FeedPhase.ready ||
+        !identical(_snapshot.cat, cat)) {
+      return;
+    }
     _commitVote(FeedSnapshot(likes: _snapshot.likes + (liked ? 1 : 0)));
+  }
+
+  Future<void> _openDetails(Cat cat, ImageProvider photo) async {
+    if (_detailsOpen ||
+        _phase != _FeedPhase.ready ||
+        !identical(_snapshot.cat, cat)) {
+      return;
+    }
+    _detailsOpen = true;
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (context) =>
+              BreedDetailsScreen(breed: cat.breed, photo: photo),
+        ),
+      );
+    } finally {
+      _detailsOpen = false;
+    }
   }
 
   Future<void> _commitVote(FeedSnapshot next) => _run(() async {
@@ -243,6 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
           photo: photo,
           onLike: () => _vote(cat, liked: true),
           onSkip: () => _vote(cat, liked: false),
+          onDetails: () => _openDetails(cat, photo),
         ),
       );
     } else {
@@ -253,49 +284,85 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Кототиндер'),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: Semantics(
-              identifier: 'like_counter',
-              liveRegion: true,
-              child: Text(
-                _restored ? '♥ ${_snapshot.likes}' : '♥ —',
-                key: const Key('like_counter'),
-                semanticsLabel: _restored
-                    ? 'Лайков: ${_snapshot.likes}'
-                    : 'Загрузка лайков',
-                style: Theme.of(context).textTheme.titleMedium,
+    final feed = SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: (constraints.maxHeight - 40).clamp(
+                  0,
+                  double.infinity,
+                ),
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: content,
+                ),
               ),
             ),
-          ),
-        ],
+          );
+        },
       ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: (constraints.maxHeight - 40).clamp(
-                    0,
-                    double.infinity,
-                  ),
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 460),
-                    child: content,
-                  ),
+    );
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Кототиндер'),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 20),
+              child: Semantics(
+                identifier: 'like_counter',
+                liveRegion: true,
+                child: Text(
+                  _restored ? '♥ ${_snapshot.likes}' : '♥ —',
+                  key: const Key('like_counter'),
+                  semanticsLabel: _restored
+                      ? 'Лайков: ${_snapshot.likes}'
+                      : 'Загрузка лайков',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-            );
-          },
+            ),
+          ],
+          bottom: TabBar(
+            onTap: (index) => setState(() => _selectedTab = index),
+            tabs: [
+              const Tab(
+                key: Key('cats_tab'),
+                text: 'Коты',
+                icon: Icon(Icons.pets_outlined),
+              ),
+              Semantics(
+                identifier: 'breeds_tab',
+                child: const Tab(
+                  key: Key('breeds_tab'),
+                  text: 'Породы',
+                  icon: Icon(Icons.list_alt),
+                ),
+              ),
+            ],
+          ),
+        ),
+        body: IndexedStack(
+          index: _selectedTab,
+          children: [
+            TickerMode(enabled: _selectedTab == 0, child: feed),
+            TickerMode(
+              enabled: _selectedTab == 1,
+              child: SafeArea(
+                child: BreedsScreen(
+                  api: widget.api,
+                  isActive: _selectedTab == 1,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -10,12 +10,14 @@ class CatCard extends StatelessWidget {
     required this.photo,
     required this.onLike,
     required this.onSkip,
+    required this.onDetails,
   });
 
   final Cat cat;
   final ImageProvider photo;
   final VoidCallback onLike;
   final VoidCallback onSkip;
+  final VoidCallback onDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +36,15 @@ class CatCard extends StatelessWidget {
               children: [
                 AspectRatio(
                   aspectRatio: 1,
-                  child: Image(
-                    image: photo,
-                    fit: BoxFit.cover,
-                    semanticLabel: 'Кот породы ${cat.breed.name}',
+                  child: InkWell(
+                    key: const Key('cat_details_button'),
+                    onTap: onDetails,
+                    child: Image(
+                      image: photo,
+                      fit: BoxFit.cover,
+                      semanticLabel:
+                          'Открыть сведения о коте породы ${cat.breed.name}',
+                    ),
                   ),
                 ),
                 Padding(
@@ -69,6 +76,11 @@ class CatCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
+                      const SizedBox(height: 12),
+                      Text(
+                        'Нажмите на фото, чтобы узнать больше',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),

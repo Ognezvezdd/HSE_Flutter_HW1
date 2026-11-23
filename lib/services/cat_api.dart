@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../app_config.dart';
 import '../models/cat.dart';
+import '../models/breed.dart';
 
 enum CatApiErrorKind { request, configuration, authentication }
 
@@ -28,6 +29,8 @@ class CatApi {
   final AppConfig config;
   final Duration timeout;
   bool _accessVerified = false;
+  List<Breed>? _cachedBreeds;
+  Future<List<Breed>>? _breedsRequest;
 
   Map<String, String> get _headers => {
     'x-api-key': config.apiKey.trim(),
@@ -69,7 +72,7 @@ class CatApi {
       if (first is! Map<String, dynamic>) {
         throw const FormatException('Invalid cat');
       }
-      return Cat.fromJson(first);
+      return completeCat(Cat.fromJson(first));
     } on MissingBreedException {
       // Image search can silently fall back to public data with a bad key.
       await _verifyAccess(force: true);
@@ -85,18 +88,96 @@ class CatApi {
 
   Future<void> _verifyAccess({bool force = false}) async {
     if (_accessVerified && !force) return;
-    _accessVerified = false;
+    await fetchBreeds(refresh: force);
+  }
+
+  Future<List<Breed>> fetchBreeds({bool refresh = false}) async {
+    final configurationError = config.validationError;
+    if (configurationError != null) {
+      throw CatApiException(
+        configurationError,
+        kind: CatApiErrorKind.configuration,
+      );
+    }
+    final pending = _breedsRequest;
+    if (pending != null) return pending;
+    final cached = _cachedBreeds;
+    if (!refresh && cached != null) return cached;
+    final request = _loadBreeds();
+    _breedsRequest = request;
+    try {
+      return await request;
+    } finally {
+      _breedsRequest = null;
+    }
+  }
+
+  Future<List<Breed>> _loadBreeds() async {
     final response = await _get(
-      config.endpoint('breeds', const {}),
+      config.endpoint('breeds', const {'limit': '1000'}),
       headers: _headers,
     );
     _requireSuccess(response);
+    final List<Breed> breeds;
+    try {
+      final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is! List) throw const FormatException('Invalid breed list');
+      breeds = [];
+      final ids = <String>{};
+      for (final Object? item in decoded) {
+        if (item is! Map<String, dynamic>) {
+          throw const FormatException('Invalid breed');
+        }
+        final breed = Breed.fromJson(item);
+        final id = breed.id;
+        if (id == null || !ids.add(id)) {
+          throw const FormatException('Missing or duplicate breed ID');
+        }
+        breeds.add(breed);
+      }
+      breeds.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+    } on FormatException {
+      throw const CatApiException(
+        'Не удалось прочитать список пород. Попробуйте ещё раз.',
+      );
+    }
     _accessVerified = true;
+    return _cachedBreeds = List.unmodifiable(breeds);
+  }
+
+  Cat completeCat(Cat cat) {
+    final matches = _cachedBreeds
+        ?.where(
+          (breed) => cat.breed.id != null
+              ? breed.id == cat.breed.id
+              : breed.name.toLowerCase() == cat.breed.name.toLowerCase(),
+        )
+        .toList();
+    if (matches == null || matches.length != 1) return cat;
+    final full = matches.single;
+    final merged = <String, dynamic>{...cat.breed.toJson()};
+    for (final entry in full.toJson().entries) {
+      if (entry.value != null && entry.key != 'weight') {
+        merged[entry.key] = entry.value;
+      }
+    }
+    merged['weight'] = {
+      'metric': full.metricWeight ?? cat.breed.metricWeight,
+      'imperial': full.imperialWeight ?? cat.breed.imperialWeight,
+    };
+    return Cat(
+      id: cat.id,
+      imageUrl: cat.imageUrl,
+      breed: Breed.fromJson(merged),
+    );
   }
 
   void _requireSuccess(http.Response response) {
     if (response.statusCode == 401 || response.statusCode == 403) {
       _accessVerified = false;
+      _cachedBreeds = null;
       throw const CatApiException(
         'TheCatAPI не принял ключ доступа. Укажите действительный CAT_API_KEY '
         'в config.json, затем остановите и заново запустите приложение.',
