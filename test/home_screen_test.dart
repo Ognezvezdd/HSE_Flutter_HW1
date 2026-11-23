@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cat_tinder/app.dart';
@@ -29,7 +30,12 @@ Future<void> settle(WidgetTester tester) async {
 void main() {
   CatApi apiFor(Future<http.Response> Function(http.Request) handler) {
     final api = CatApi(
-      client: MockClient(handler),
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/breeds')) {
+          return http.Response('[]', 200);
+        }
+        return handler(request);
+      }),
       config: const AppConfig(apiKey: 'test-only-key'),
     );
     addTearDown(api.close);
@@ -67,6 +73,63 @@ void main() {
     expect(find.text('Подключим котов'), findsOneWidget);
     expect(find.byKey(const Key('cat_card')), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invalid key shows an explicit error without retry', (
+    tester,
+  ) async {
+    final paths = <String>[];
+    final api = CatApi(
+      config: const AppConfig(apiKey: 'invalid-for-testing'),
+      client: MockClient((request) async {
+        paths.add(request.url.path);
+        return http.Response('Authentication required', 403);
+      }),
+    );
+    addTearDown(api.close);
+    await mount(tester, api);
+    expect(find.text('Ключ API не принят'), findsOneWidget);
+    expect(find.textContaining('CAT_API_KEY'), findsOneWidget);
+    expect(find.byKey(const Key('retry_button')), findsNothing);
+    expect(find.byKey(const Key('cat_card')), findsNothing);
+    expect(paths, ['/v1/breeds']);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('genuine missing breed can be retried', (tester) async {
+    var cats = 0;
+    final api = apiFor(
+      (_) async => ++cats == 1
+          ? http.Response(
+              jsonEncode([
+                {...catJson('one'), 'breeds': []},
+              ]),
+              200,
+            )
+          : catResponse('two'),
+    );
+    await mount(tester, api);
+    expect(find.textContaining('без породы'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('retry_button')));
+    await settle(tester);
+    expect(find.byKey(const Key('cat_card')), findsOneWidget);
+    expect(counter(tester), '♥ 0');
+  });
+
+  testWidgets('authentication failure after a like keeps the counter', (
+    tester,
+  ) async {
+    var cats = 0;
+    final api = apiFor(
+      (_) async =>
+          ++cats == 1 ? catResponse('one') : http.Response('Unauthorized', 401),
+    );
+    await mount(tester, api);
+    await tester.tap(find.byKey(const Key('like_button')));
+    await settle(tester);
+    expect(find.text('Ключ API не принят'), findsOneWidget);
+    expect(find.byKey(const Key('retry_button')), findsNothing);
+    expect(counter(tester), '♥ 1');
   });
 
   testWidgets(

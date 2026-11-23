@@ -20,7 +20,12 @@ void main() {
     Duration timeout = const Duration(seconds: 10),
   }) {
     final api = CatApi(
-      client: MockClient(handler),
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/breeds')) {
+          return http.Response('[]', 200);
+        }
+        return handler(request);
+      }),
       config: config,
       timeout: timeout,
     );
@@ -141,5 +146,133 @@ void main() {
       ),
     );
     pending.complete(catResponse('late'));
+  });
+
+  test('invalid key is detected before public image fallback', () async {
+    final paths = <String>[];
+    final api = CatApi(
+      config: config,
+      client: MockClient((request) async {
+        paths.add(request.url.path);
+        expect(request.headers['x-api-key'], 'test-only-key');
+        if (request.url.path.endsWith('/breeds')) {
+          return http.Response('Authentication required', 403);
+        }
+        return http.Response(
+          jsonEncode([
+            {...catJson('public'), 'breeds': []},
+          ]),
+          200,
+        );
+      }),
+    );
+    addTearDown(api.close);
+    await expectLater(
+      api.fetchRandomCat(),
+      throwsA(
+        isA<CatApiException>()
+            .having((e) => e.kind, 'kind', CatApiErrorKind.authentication)
+            .having((e) => e.canRetry, 'canRetry', isFalse),
+      ),
+    );
+    expect(paths, ['/custom/v1/breeds']);
+  });
+
+  test('successful access check is reused for subsequent cards', () async {
+    var accessChecks = 0;
+    var cats = 0;
+    final api = CatApi(
+      config: config,
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/breeds')) {
+          accessChecks++;
+          return http.Response('[]', 200);
+        }
+        return catResponse('${++cats}');
+      }),
+    );
+    addTearDown(api.close);
+    await api.fetchRandomCat();
+    await api.fetchRandomCat();
+    expect(accessChecks, 1);
+    expect(cats, 2);
+  });
+
+  test('revoked key is distinguished from a cat without breed', () async {
+    var accessAllowed = true;
+    var accessChecks = 0;
+    final api = CatApi(
+      config: config,
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/breeds')) {
+          accessChecks++;
+          return http.Response('[]', accessAllowed ? 200 : 403);
+        }
+        return accessAllowed
+            ? catResponse('one')
+            : http.Response(
+                jsonEncode([
+                  {...catJson('public'), 'breeds': []},
+                ]),
+                200,
+              );
+      }),
+    );
+    addTearDown(api.close);
+    await api.fetchRandomCat();
+    accessAllowed = false;
+    await expectLater(
+      api.fetchRandomCat(),
+      throwsA(
+        isA<CatApiException>().having(
+          (e) => e.kind,
+          'kind',
+          CatApiErrorKind.authentication,
+        ),
+      ),
+    );
+    expect(accessChecks, 2);
+  });
+
+  test('missing breed remains retryable when access is confirmed', () async {
+    final api = apiFor(
+      (_) async => http.Response(
+        jsonEncode([
+          {...catJson('one'), 'breeds': []},
+        ]),
+        200,
+      ),
+    );
+    await expectLater(
+      api.fetchRandomCat(),
+      throwsA(
+        isA<CatApiException>()
+            .having((e) => e.canRetry, 'canRetry', isTrue)
+            .having((e) => e.message, 'message', contains('без породы')),
+      ),
+    );
+  });
+
+  test('failed access check can be retried after network recovery', () async {
+    var accessChecks = 0;
+    final api = CatApi(
+      config: config,
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/breeds')) {
+          if (++accessChecks == 1) throw http.ClientException('offline');
+          return http.Response('[]', 200);
+        }
+        return catResponse('one');
+      }),
+    );
+    addTearDown(api.close);
+    await expectLater(
+      api.fetchRandomCat(),
+      throwsA(
+        isA<CatApiException>().having((e) => e.canRetry, 'canRetry', isTrue),
+      ),
+    );
+    expect((await api.fetchRandomCat()).id, 'one');
+    expect(accessChecks, 2);
   });
 }

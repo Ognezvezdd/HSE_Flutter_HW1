@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   _FeedPhase _phase = _FeedPhase.loading;
   Cat? _cat;
   ImageProvider? _photo;
-  String? _error;
+  CatApiException? _error;
   int _likes = 0;
   int _cardNumber = 0;
   bool _requestInFlight = false;
@@ -72,9 +72,13 @@ class _HomeScreenState extends State<HomeScreen> {
         _cardNumber++;
       });
     } on CatApiException catch (error) {
-      _showError(error.message);
+      _showError(error);
     } on TimeoutException {
-      _showError('Фотография загружается слишком долго. Попробуйте ещё раз.');
+      _showError(
+        const CatApiException(
+          'Фотография загружается слишком долго. Попробуйте ещё раз.',
+        ),
+      );
     } catch (error, stackTrace) {
       FlutterError.reportError(
         FlutterErrorDetails(
@@ -84,17 +88,19 @@ class _HomeScreenState extends State<HomeScreen> {
           context: ErrorDescription('while loading a cat card'),
         ),
       );
-      _showError('Не удалось показать кота. Попробуйте ещё раз.');
+      _showError(
+        const CatApiException('Не удалось показать кота. Попробуйте ещё раз.'),
+      );
     } finally {
       _requestInFlight = false;
     }
   }
 
-  void _showError(String message) {
+  void _showError(CatApiException error) {
     if (!mounted) return;
     setState(() {
       _phase = _FeedPhase.error;
-      _error = message;
+      _error = error;
     });
   }
 
@@ -116,12 +122,17 @@ class _HomeScreenState extends State<HomeScreen> {
         message: configurationError,
       );
     } else if (_phase == _FeedPhase.error) {
+      final error = _error ?? const CatApiException('Попробуйте ещё раз.');
       content = StatusPanel(
-        title: _cat == null
+        title: error.kind == CatApiErrorKind.authentication
+            ? 'Ключ API не принят'
+            : _cat == null
             ? 'Кот пока не нашёлся'
             : 'Не удалось загрузить фото',
-        message: _error ?? 'Попробуйте ещё раз.',
-        onRetry: () => _loadCat(retryPhoto: _cat != null),
+        message: error.message,
+        onRetry: error.canRetry
+            ? () => _loadCat(retryPhoto: _cat != null)
+            : null,
       );
     } else if (_phase == _FeedPhase.ready && cat != null && photo != null) {
       content = Dismissible(
