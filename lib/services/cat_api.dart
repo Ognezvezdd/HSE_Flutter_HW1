@@ -35,14 +35,7 @@ class CatApi {
   };
 
   Future<Cat> fetchRandomCat() async {
-    final configurationError = config.validationError;
-    if (configurationError != null) {
-      throw CatApiException(
-        configurationError,
-        kind: CatApiErrorKind.configuration,
-      );
-    }
-    await _verifyAccess();
+    await ensureAccess();
     final response = await _get(
       config.endpoint('images/search', {
         'has_breeds': '1',
@@ -52,6 +45,21 @@ class CatApi {
       headers: _headers,
     );
     _requireSuccess(response);
+    return _parseCat(response);
+  }
+
+  Future<void> ensureAccess() async {
+    final configurationError = config.validationError;
+    if (configurationError != null) {
+      throw CatApiException(
+        configurationError,
+        kind: CatApiErrorKind.configuration,
+      );
+    }
+    await _verifyAccess();
+  }
+
+  Future<Cat> _parseCat(http.Response response) async {
     try {
       final Object? data = jsonDecode(utf8.decode(response.bodyBytes));
       if (data is! List || data.isEmpty) {

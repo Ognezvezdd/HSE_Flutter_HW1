@@ -6,12 +6,14 @@ class StatusPanel extends StatelessWidget {
     required this.title,
     required this.message,
     this.onRetry,
+    this.onReset,
     this.isLoading = false,
   });
 
   final String title;
   final String message;
   final VoidCallback? onRetry;
+  final VoidCallback? onReset;
   final bool isLoading;
 
   @override
@@ -47,6 +49,10 @@ class StatusPanel extends StatelessWidget {
               label: const Text('Повторить'),
             ),
           ),
+        ],
+        if (onReset != null) ...[
+          const SizedBox(height: 12),
+          TextButton(onPressed: onReset, child: const Text('Начать заново')),
         ],
       ],
     ),

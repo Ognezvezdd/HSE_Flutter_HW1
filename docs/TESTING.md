@@ -16,11 +16,16 @@
 | Нет сети при запуске | Отключить Wi-Fi/остальные подключения и запустить с обычным `config.json` | Понятная ошибка и повтор; после восстановления сети повтор загружает карточку |
 | Сеть потеряна после лайков | С действительным ключом получить несколько лайков, запомнить N, отключить сеть, поставить ещё один лайк | Счётчик N+1, затем ошибка. Вернуть сеть и повторить: следующий кот, счётчик по-прежнему N+1 |
 | Быстрые действия | Быстро нажимать лайк несколько раз; отдельно повторить с пропуском и свайпами | Одна принятая карточка даёт не более одного лайка и одного перехода. Во время загрузки действий нет |
+| Refresh / повторный запуск (R2) | Сделать несколько лайков, дождаться готовой карточки, запомнить число и кота, обновить страницу или закрыть и открыть приложение | Тот же счётчик, тот же ID кота, фотография и порода; новый случайный кот не запрашивается |
+| Refresh во время запроса следующего кота | Поставить лайк и обновить страницу во время загрузки | Принятый лайк сохраняется, загружается следующий кот; обработанная карточка не возвращается |
 | Узкий экран | Уменьшить окно приложения, прокрутить карточку | Нет переполнения; обе кнопки достижимы, длинный текст не ломает экран |
 
 Уже загруженная фотография остаётся доступна без сети. Чтобы проверить ошибку,
 после отключения сети нужно запустить новый запрос, например перейти к следующему
 коту. Простое отключение Wi-Fi не должно само удалять готовую карточку.
+Для сохранения между Web-запусками используем постоянный порт:
+`flutter run -d chrome --web-port=7357 --dart-define-from-file=config.json`.
+Другой host/порт, инкогнито или очистка данных сайта означают отдельное/пустое хранилище.
 
 ## Воспроизводимо через тесты
 
@@ -42,6 +47,10 @@ flutter test test/home_screen_test.dart --plain-name "invalid key shows an expli
 flutter test test/home_screen_test.dart --plain-name "double tap accepts one like; failed next request can be retried"
 flutter test test/home_screen_test.dart --plain-name "photo retry keeps the same cat and does not refetch metadata"
 flutter test test/cat_api_test.dart --plain-name "times out a request that never completes"
+flutter test test/home_screen_test.dart --plain-name "restart restores the same cat and likes without another search"
+flutter test test/home_screen_test.dart --plain-name "restart during next request keeps the like and consumes the old cat"
+flutter test test/home_screen_test.dart --plain-name "failed vote save can be retried without adding a second like"
+flutter test test/feed_store_test.dart
 ```
 
 В тесте двойного лайка один обработчик вызывается дважды подряд до следующей

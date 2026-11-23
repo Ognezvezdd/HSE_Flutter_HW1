@@ -6,6 +6,9 @@ import 'package:cat_tinder/app.dart';
 import 'package:cat_tinder/app_config.dart';
 import 'package:cat_tinder/screens/home_screen.dart';
 import 'package:cat_tinder/services/cat_api.dart';
+import 'package:cat_tinder/models/cat.dart';
+import 'package:cat_tinder/models/feed_snapshot.dart';
+import 'package:cat_tinder/services/feed_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -46,6 +49,7 @@ void main() {
     WidgetTester tester,
     CatApi api, {
     ImageProvider Function(Uri)? photoProvider,
+    FeedStore? store,
   }) async {
     tester.view.physicalSize = const Size(390, 960);
     tester.view.devicePixelRatio = 1;
@@ -55,6 +59,7 @@ void main() {
       MaterialApp(
         home: HomeScreen(
           api: api,
+          store: store ?? MemoryFeedStore(),
           photoProvider: photoProvider ?? (_) => MemoryImage(photoBytes),
         ),
       ),
@@ -68,7 +73,12 @@ void main() {
   testWidgets('missing key shows setup instructions instead of fake cards', (
     tester,
   ) async {
-    await tester.pumpWidget(const CatTinderApp(config: AppConfig(apiKey: '')));
+    await tester.pumpWidget(
+      CatTinderApp(
+        config: const AppConfig(apiKey: ''),
+        feedStore: MemoryFeedStore(),
+      ),
+    );
     await settle(tester);
     expect(find.text('Подключим котов'), findsOneWidget);
     expect(find.byKey(const Key('cat_card')), findsNothing);
@@ -208,7 +218,11 @@ void main() {
   testWidgets('disposing while a request is pending is safe', (tester) async {
     final response = Completer<http.Response>();
     final api = apiFor((_) => response.future);
-    await tester.pumpWidget(MaterialApp(home: HomeScreen(api: api)));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(api: api, store: MemoryFeedStore()),
+      ),
+    );
     await tester.pumpWidget(const SizedBox());
     response.complete(catResponse('late'));
     await settle(tester);
@@ -227,5 +241,143 @@ void main() {
     await tester.ensureVisible(find.byKey(const Key('like_button')));
     await settle(tester);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'restart restores the same cat and likes without another search',
+    (tester) async {
+      final store = MemoryFeedStore();
+      var searches = 0;
+      final api = apiFor((_) async => catResponse('cat-${++searches}'));
+      await mount(tester, api, store: store);
+      await tester.tap(find.byKey(const Key('like_button')));
+      await settle(tester);
+      expect(counter(tester), '♥ 1');
+      expect((await store.read()).cat?.id, 'cat-2');
+
+      await tester.pumpWidget(const SizedBox());
+      final restartedApi = apiFor((_) async {
+        fail('Restoring a saved card must not fetch another cat');
+      });
+      await mount(tester, restartedApi, store: store);
+      expect(counter(tester), '♥ 1');
+      final image = tester.widget<Image>(find.byType(Image));
+      expect(image.semanticLabel, 'Кот породы Abyssinian');
+      expect((await store.read()).cat?.id, 'cat-2');
+      expect(searches, 2);
+      expect(find.byKey(const Key('cat_card')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'restart during next request keeps the like and consumes the old cat',
+    (tester) async {
+      final store = MemoryFeedStore();
+      final pending = Completer<http.Response>();
+      var searches = 0;
+      final api = apiFor((_) async {
+        if (++searches == 1) return catResponse('old');
+        return pending.future;
+      });
+      await mount(tester, api, store: store);
+      tester
+          .widget<FilledButton>(find.byKey(const Key('like_button')))
+          .onPressed
+          ?.call();
+      await tester.pump();
+      final saved = await store.read();
+      expect(saved.likes, 1);
+      expect(saved.cat, isNull);
+      await tester.pumpWidget(const SizedBox());
+      final restartedApi = apiFor((_) async => catResponse('new'));
+      await mount(tester, restartedApi, store: store);
+      expect(counter(tester), '♥ 1');
+      expect((await store.read()).cat?.id, 'new');
+      pending.complete(catResponse('stale-result'));
+      await settle(tester);
+      expect((await store.read()).cat?.id, 'new');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('failed vote save can be retried without adding a second like', (
+    tester,
+  ) async {
+    final store = MemoryFeedStore();
+    var searches = 0;
+    final api = apiFor((_) async => catResponse('cat-${++searches}'));
+    await mount(tester, api, store: store);
+    store.failWrites = true;
+    await tester.tap(find.byKey(const Key('like_button')));
+    await settle(tester);
+    expect(find.text('Локальные данные недоступны'), findsOneWidget);
+    expect(counter(tester), '♥ 0');
+    expect(searches, 1);
+    expect((await store.read()).cat?.id, 'cat-1');
+    store.failWrites = false;
+    final retry = tester.widget<FilledButton>(
+      find.byKey(const Key('retry_button')),
+    );
+    retry.onPressed?.call();
+    retry.onPressed?.call();
+    await settle(tester);
+    expect(counter(tester), '♥ 1');
+    expect(searches, 2);
+    expect((await store.read()).likes, 1);
+  });
+
+  testWidgets(
+    'failed candidate save retries the same cat without searching again',
+    (tester) async {
+      final store = MemoryFeedStore()..failWrites = true;
+      var searches = 0;
+      final api = apiFor((_) async => catResponse('cat-${++searches}'));
+      await mount(tester, api, store: store);
+      expect(find.text('Локальные данные недоступны'), findsOneWidget);
+      store.failWrites = false;
+      await tester.tap(find.byKey(const Key('retry_button')));
+      await settle(tester);
+      expect(searches, 1);
+      expect((await store.read()).cat?.id, 'cat-1');
+      expect(find.byKey(const Key('cat_card')), findsOneWidget);
+    },
+  );
+
+  testWidgets('read failure does not overwrite saved likes', (tester) async {
+    final store = MemoryFeedStore(
+      initial: FeedSnapshot(likes: 7, cat: Cat.fromJson(catJson('saved'))),
+    )..failReads = true;
+    var searches = 0;
+    final api = apiFor((_) async => catResponse('new-${++searches}'));
+    await mount(tester, api, store: store);
+    expect(counter(tester), '♥ —');
+    expect(store.writes, 0);
+    expect(searches, 0);
+    store.failReads = false;
+    await tester.tap(find.byKey(const Key('retry_button')));
+    await settle(tester);
+    expect(counter(tester), '♥ 7');
+    expect(searches, 0);
+    expect((await store.read()).cat?.id, 'saved');
+  });
+
+  testWidgets('resetting corrupt data requires explicit confirmation', (
+    tester,
+  ) async {
+    final store = MemoryFeedStore()..raw = '{broken';
+    final api = apiFor((_) async => catResponse('new'));
+    await mount(tester, api, store: store);
+    await tester.tap(find.text('Начать заново'));
+    await settle(tester);
+    await tester.tap(find.text('Отмена'));
+    await settle(tester);
+    expect(store.raw, '{broken');
+    expect(store.writes, 0);
+    await tester.tap(find.text('Начать заново'));
+    await settle(tester);
+    await tester.tap(find.text('Сбросить'));
+    await settle(tester);
+    expect(counter(tester), '♥ 0');
+    expect((await store.read()).cat?.id, 'new');
   });
 }

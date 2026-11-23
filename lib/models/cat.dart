@@ -17,6 +17,13 @@ class Breed {
   final String? origin;
   final String? temperament;
   final String? description;
+
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'origin': origin,
+    'temperament': temperament,
+    'description': description,
+  };
 }
 
 class Cat {
@@ -48,6 +55,12 @@ class Cat {
   final String id;
   final Uri imageUrl;
   final Breed breed;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'url': imageUrl.toString(),
+    'breeds': [breed.toJson()],
+  };
 }
 
 class MissingBreedException implements Exception {
