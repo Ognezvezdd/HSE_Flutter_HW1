@@ -12,7 +12,7 @@ class BreedInformation extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Text(breed.name, style: Theme.of(context).textTheme.headlineLarge),
-      const SizedBox(height: 24),
+      const SizedBox(height: 20),
       _section(context, 'О породе', [Text(breed.description ?? 'Нет данных')]),
       _section(context, 'Основные сведения', [
         _fact(context, 'Происхождение', breed.origin),
@@ -44,7 +44,12 @@ class BreedInformation extends StatelessWidget {
           const Text('Оценки по данным API; максимальное значение — 5.'),
           const SizedBox(height: 16),
           for (final entry in breed.ratings.entries)
-            _score(context, entry.key.label, '${entry.value} / 5'),
+            _score(
+              context,
+              entry.key.label,
+              '${entry.value} / 5',
+              rating: entry.value,
+            ),
         ]),
       if (breed.flags.isNotEmpty)
         _section(context, 'Особенности', [
@@ -92,19 +97,47 @@ class BreedInformation extends StatelessWidget {
               ?.copyWith(color: Theme.of(context).colorScheme.primary),
         ),
         const SizedBox(height: 4),
-        Text(value ?? 'Нет данных'),
+        Text(
+          value ?? 'Нет данных',
+          style: TextStyle(
+            color: value == null
+                ? Theme.of(context).colorScheme.onSurfaceVariant
+                : null,
+          ),
+        ),
       ],
     ),
   );
 
-  Widget _score(BuildContext context, String label, String value) => Padding(
+  Widget _score(
+    BuildContext context,
+    String label,
+    String value, {
+    int? rating,
+  }) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    child: Column(
       children: [
-        Expanded(child: Text(label)),
-        const SizedBox(width: 16),
-        Text(value, style: Theme.of(context).textTheme.titleSmall),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: Text(label)),
+            const SizedBox(width: 16),
+            Text(value, style: Theme.of(context).textTheme.titleSmall),
+          ],
+        ),
+        if (rating != null) ...[
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: rating / 5,
+              minHeight: 5,
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              semanticsLabel: '$label: $rating из 5',
+            ),
+          ),
+        ],
       ],
     ),
   );

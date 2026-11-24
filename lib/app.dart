@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'app_config.dart';
+import 'app_theme.dart';
 import 'screens/home_screen.dart';
 import 'services/cat_api.dart';
 import 'services/feed_store.dart';
@@ -35,14 +36,7 @@ class _CatTinderAppState extends State<CatTinderApp> {
   Widget build(BuildContext context) => MaterialApp(
     title: 'Кототиндер',
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF167569),
-        surface: const Color(0xFFFAF8F4),
-      ),
-      scaffoldBackgroundColor: const Color(0xFFFAF8F4),
-      useMaterial3: true,
-    ),
+    theme: createAppTheme(),
     home: HomeScreen(api: _api, store: _store),
   );
 }

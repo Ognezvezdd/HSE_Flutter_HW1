@@ -23,7 +23,7 @@ class BreedDetailsScreen extends StatelessWidget {
     body: SafeArea(
       child: SingleChildScrollView(
         key: const Key('breed_details_scroll'),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
@@ -33,13 +33,16 @@ class BreedDetailsScreen extends StatelessWidget {
                 if (photo case final image?) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: AspectRatio(
-                      aspectRatio: 1.3,
-                      child: Image(
-                        image: image,
-                        fit: BoxFit.contain,
-                        key: const Key('cat_detail_image'),
-                        semanticLabel: 'Кот породы ${breed.name}',
+                    child: ColoredBox(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      child: AspectRatio(
+                        aspectRatio: 1.3,
+                        child: Image(
+                          image: image,
+                          fit: BoxFit.contain,
+                          key: const Key('cat_detail_image'),
+                          semanticLabel: 'Кот породы ${breed.name}',
+                        ),
                       ),
                     ),
                   ),

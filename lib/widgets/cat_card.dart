@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 
 import '../models/cat.dart';
 
@@ -8,15 +7,11 @@ class CatCard extends StatelessWidget {
     super.key,
     required this.cat,
     required this.photo,
-    required this.onLike,
-    required this.onSkip,
     required this.onDetails,
   });
 
   final Cat cat;
   final ImageProvider photo;
-  final VoidCallback onLike;
-  final VoidCallback onSkip;
   final VoidCallback onDetails;
 
   @override
@@ -35,7 +30,7 @@ class CatCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 AspectRatio(
-                  aspectRatio: 1,
+                  aspectRatio: 1.15,
                   child: InkWell(
                     key: const Key('cat_details_button'),
                     onTap: onDetails,
@@ -48,7 +43,7 @@ class CatCard extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -66,20 +61,20 @@ class CatCard extends StatelessWidget {
                       ],
                       if (cat.breed.temperament case final temperament?) ...[
                         const SizedBox(height: 12),
-                        Text(temperament),
-                      ],
-                      if (cat.breed.description case final description?) ...[
-                        const SizedBox(height: 16),
                         Text(
-                          description,
-                          maxLines: 3,
+                          temperament,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: colors.onSurfaceVariant),
                         ),
                       ],
-                      const SizedBox(height: 12),
-                      Text(
-                        'Нажмите на фото, чтобы узнать больше',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      const SizedBox(height: 4),
+                      TextButton.icon(
+                        onPressed: onDetails,
+                        iconAlignment: IconAlignment.end,
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                        label: const Text('О породе'),
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
                       ),
                     ],
                   ),
@@ -87,37 +82,6 @@ class CatCard extends StatelessWidget {
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 16,
-          runSpacing: 12,
-          children: [
-            Semantics(
-              identifier: 'dislike_button',
-              child: OutlinedButton.icon(
-                key: const Key('dislike_button'),
-                onPressed: onSkip,
-                icon: const Icon(Icons.close),
-                label: const Text('Пропустить'),
-              ),
-            ),
-            Semantics(
-              identifier: 'like_button',
-              child: FilledButton.icon(
-                key: const Key('like_button'),
-                onPressed: onLike,
-                icon: const Icon(CupertinoIcons.heart),
-                label: const Text('Нравится'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Влево — пропустить · Вправо — лайк',
-          textAlign: TextAlign.center,
         ),
       ],
     );

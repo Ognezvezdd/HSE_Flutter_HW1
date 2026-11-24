@@ -1,11 +1,11 @@
 {
-    "name": "cat_tinder",
-    "short_name": "cat_tinder",
+    "name": "Кототиндер",
+    "short_name": "Кототиндер",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Kototinder - Flutter HW1",
+    "background_color": "#F6F5F0",
+    "theme_color": "#14594F",
+    "description": "Коты, лайки и знакомство с породами",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

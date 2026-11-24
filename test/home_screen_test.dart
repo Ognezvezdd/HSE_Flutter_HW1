@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:cat_tinder/app.dart';
 import 'package:cat_tinder/app_config.dart';
+import 'package:cat_tinder/app_theme.dart';
 import 'package:cat_tinder/screens/home_screen.dart';
 import 'package:cat_tinder/services/cat_api.dart';
 import 'package:cat_tinder/models/cat.dart';
@@ -44,6 +45,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MaterialApp(
+        theme: createAppTheme(),
         home: HomeScreen(
           api: api,
           store: store ?? MemoryFeedStore(),
@@ -207,6 +209,7 @@ void main() {
     final api = apiFor((_) => response.future);
     await tester.pumpWidget(
       MaterialApp(
+        theme: createAppTheme(),
         home: HomeScreen(api: api, store: MemoryFeedStore()),
       ),
     );
@@ -216,19 +219,45 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('card fits a narrow viewport with enlarged text and scrolls', (
-    tester,
-  ) async {
-    final api = apiFor((request) async => catResponse('one'));
-    await mount(tester, api);
-    tester.view.physicalSize = const Size(320, 568);
-    tester.platformDispatcher.textScaleFactorTestValue = 2;
-    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await settle(tester);
-    await tester.ensureVisible(find.byKey(const Key('like_button')));
-    await settle(tester);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'actions stay visible on narrow screens with enlarged text while the card scrolls',
+    (tester) async {
+      final api = apiFor((request) async => catResponse('one'));
+      await mount(tester, api);
+      tester.view.physicalSize = const Size(320, 568);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await settle(tester);
+      const viewport = Rect.fromLTWH(0, 0, 320, 568);
+      final positions = <Key, Rect>{};
+      for (final key in [
+        const Key('like_button'),
+        const Key('dislike_button'),
+      ]) {
+        final finder = find.byKey(key);
+        final rect = tester.getRect(finder);
+        expect(viewport.contains(rect.topLeft), isTrue);
+        expect(
+          viewport.contains(rect.bottomRight - const Offset(0.1, 0.1)),
+          isTrue,
+        );
+        expect(finder.hitTestable(), findsOneWidget);
+        positions[key] = rect;
+      }
+      await tester.drag(
+        find.byKey(const Key('cat_feed_scroll')),
+        const Offset(0, -180),
+      );
+      await settle(tester);
+      for (final entry in positions.entries) {
+        expect(tester.getRect(find.byKey(entry.key)), entry.value);
+      }
+      await tester.tap(find.byKey(const Key('like_button')));
+      await settle(tester);
+      expect(counter(tester), '♥ 1');
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'restart restores the same cat and likes without another search',

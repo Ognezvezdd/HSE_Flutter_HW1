@@ -113,11 +113,15 @@ class _BreedsScreenState extends State<BreedsScreen> {
             ? 'Ключ API не принят'
             : 'Каталог пока недоступен',
         message: error.message,
+        icon: error.kind == CatApiErrorKind.authentication
+            ? Icons.key_rounded
+            : Icons.cloud_off_rounded,
         onRetry: error.canRetry ? () => _load(refresh: true) : null,
       );
     } else if (breeds == null || breeds.isEmpty) {
       content = StatusPanel(
         title: 'Пород пока нет',
+        icon: Icons.pets_outlined,
         message:
             'Сервис вернул пустой список. Попробуйте загрузить его ещё раз.',
         onRetry: () => _load(refresh: true),
@@ -130,21 +134,56 @@ class _BreedsScreenState extends State<BreedsScreen> {
           child: ListView.separated(
             key: const PageStorageKey('breeds_list'),
             controller: _scrollController,
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-            itemCount: breeds.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            itemCount: breeds.length + 1,
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
-              final breed = breeds[index];
-              return ListTile(
-                key: ValueKey('breed_${breed.id}'),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 10,
-                  horizontal: 4,
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 8, 4, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Каталог пород',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Пород в каталоге: ${breeds.length}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              final breed = breeds[index - 1];
+              return Card(
+                margin: EdgeInsets.zero,
+                clipBehavior: Clip.antiAlias,
+                child: ListTile(
+                  key: ValueKey('breed_${breed.id}'),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 16,
+                  ),
+                  leading: CircleAvatar(
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    child: const Icon(Icons.pets_outlined, size: 21),
+                  ),
+                  title: Text(
+                    breed.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  subtitle: Text(breed.origin ?? 'Происхождение: нет данных'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _openDetails(breed),
                 ),
-                title: Text(breed.name),
-                subtitle: Text(breed.origin ?? 'Происхождение: нет данных'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _openDetails(breed),
               );
             },
           ),
@@ -153,7 +192,7 @@ class _BreedsScreenState extends State<BreedsScreen> {
     }
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
+        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 460),

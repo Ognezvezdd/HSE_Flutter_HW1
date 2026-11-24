@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cat_tinder/app_config.dart';
+import 'package:cat_tinder/app_theme.dart';
 import 'package:cat_tinder/models/cat.dart';
 import 'package:cat_tinder/models/feed_snapshot.dart';
 import 'package:cat_tinder/screens/breed_details_screen.dart';
@@ -49,6 +50,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MaterialApp(
+        theme: createAppTheme(),
         home: HomeScreen(
           api: api,
           store: store ?? MemoryFeedStore(),

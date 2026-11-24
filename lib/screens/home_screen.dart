@@ -7,6 +7,7 @@ import '../models/feed_snapshot.dart';
 import '../services/cat_api.dart';
 import '../services/feed_store.dart';
 import '../widgets/cat_card.dart';
+import '../widgets/cat_actions.dart';
 import '../widgets/status_panel.dart';
 import 'breed_details_screen.dart';
 import 'breeds_screen.dart';
@@ -235,6 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (configurationError != null) {
       content = StatusPanel(
         title: 'Подключим котов',
+        icon: Icons.key_rounded,
         message: configurationError,
       );
     } else if (_phase == _FeedPhase.error) {
@@ -242,6 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (error is FeedStorageException) {
         content = StatusPanel(
           title: 'Локальные данные недоступны',
+          icon: Icons.save_outlined,
           message: error.message,
           onRetry: _retryAction,
           onReset: error.canReset ? _confirmReset : null,
@@ -255,7 +258,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ? 'Ключ API не принят'
               : cat == null
               ? 'Кот пока не нашёлся'
-              : 'Не удалось загрузить фото',
+              : 'Не удалось загрузить кота',
+          icon: failure.kind == CatApiErrorKind.authentication
+              ? Icons.key_rounded
+              : Icons.cloud_off_rounded,
           message: failure.message,
           onRetry: failure.canRetry ? _retryAction : null,
         );
@@ -271,8 +277,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: CatCard(
           cat: cat,
           photo: photo,
-          onLike: () => _vote(cat, liked: true),
-          onSkip: () => _vote(cat, liked: false),
           onDetails: () => _openDetails(cat, photo),
         ),
       );
@@ -285,47 +289,90 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final feed = SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: (constraints.maxHeight - 40).clamp(
-                  0,
-                  double.infinity,
-                ),
-              ),
-              child: Center(
+      child: Column(
+        children: [
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                key: const Key('cat_feed_scroll'),
+                padding: const EdgeInsets.all(16),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 460),
-                  child: content,
+                  constraints: BoxConstraints(
+                    minHeight: (constraints.maxHeight - 32).clamp(
+                      0,
+                      double.infinity,
+                    ),
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 460),
+                      child: content,
+                    ),
+                  ),
                 ),
               ),
             ),
-          );
-        },
+          ),
+          if (configurationError == null &&
+              _phase == _FeedPhase.ready &&
+              cat != null &&
+              photo != null)
+            CatActions(
+              onLike: () => _vote(cat, liked: true),
+              onSkip: () => _vote(cat, liked: false),
+            ),
+        ],
       ),
     );
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Кототиндер'),
+          title: Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  image: const DecorationImage(
+                    image: AssetImage('assets/branding/app_icon.png'),
+                  ),
+                ),
+                child: const SizedBox.square(dimension: 32),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Кототиндер',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           actions: [
             Padding(
-              padding: const EdgeInsets.only(right: 20),
+              padding: const EdgeInsets.only(right: 16),
               child: Semantics(
                 identifier: 'like_counter',
                 liveRegion: true,
-                child: Text(
-                  _restored ? '♥ ${_snapshot.likes}' : '♥ —',
-                  key: const Key('like_counter'),
-                  semanticsLabel: _restored
-                      ? 'Лайков: ${_snapshot.likes}'
-                      : 'Загрузка лайков',
-                  style: Theme.of(context).textTheme.titleMedium,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Text(
+                    _restored ? '♥ ${_snapshot.likes}' : '♥ —',
+                    key: const Key('like_counter'),
+                    semanticsLabel: _restored
+                        ? 'Лайков: ${_snapshot.likes}'
+                        : 'Загрузка лайков',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
               ),
             ),
@@ -333,17 +380,13 @@ class _HomeScreenState extends State<HomeScreen> {
           bottom: TabBar(
             onTap: (index) => setState(() => _selectedTab = index),
             tabs: [
-              const Tab(
-                key: Key('cats_tab'),
-                text: 'Коты',
-                icon: Icon(Icons.pets_outlined),
-              ),
+              const Tab(key: Key('cats_tab'), height: 48, child: Text('Коты')),
               Semantics(
                 identifier: 'breeds_tab',
                 child: const Tab(
                   key: Key('breeds_tab'),
-                  text: 'Породы',
-                  icon: Icon(Icons.list_alt),
+                  height: 48,
+                  child: Text('Породы'),
                 ),
               ),
             ],
