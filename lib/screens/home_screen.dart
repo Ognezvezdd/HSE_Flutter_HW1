@@ -41,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _restored = false;
   bool _resetDialogOpen = false;
   bool _detailsOpen = false;
+  bool _swipeInProgress = false;
   int _selectedTab = 0;
 
   @override
@@ -97,6 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _photo = photo;
       _phase = _FeedPhase.ready;
+      _swipeInProgress = false;
       _cardNumber++;
     });
   }
@@ -166,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openDetails(Cat cat, ImageProvider photo) async {
     if (_detailsOpen ||
+        _swipeInProgress ||
         _phase != _FeedPhase.ready ||
         !identical(_snapshot.cat, cat)) {
       return;
@@ -272,6 +275,11 @@ class _HomeScreenState extends State<HomeScreen> {
         direction: DismissDirection.horizontal,
         background: _swipeBackground(context, liked: true),
         secondaryBackground: _swipeBackground(context, liked: false),
+        onUpdate: (details) {
+          if (_phase == _FeedPhase.ready && identical(_snapshot.cat, cat)) {
+            _swipeInProgress = details.progress > 0;
+          }
+        },
         onDismissed: (direction) =>
             _vote(cat, liked: direction == DismissDirection.startToEnd),
         child: CatCard(

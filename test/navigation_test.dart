@@ -328,4 +328,43 @@ void main() {
     await settle(tester);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'details cannot interrupt a dismissing card and work after a cancelled swipe',
+    (tester) async {
+      var searches = 0;
+      final api = apiFor(
+        (request) async => request.url.path.endsWith('/breeds')
+            ? catalog()
+            : catResponse('cat-${++searches}'),
+      );
+      await mount(tester, api);
+      await tester.drag(find.byKey(const Key('cat_card')), const Offset(30, 0));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('cat_details_button')));
+      await settle(tester);
+      expect(find.byType(BreedDetailsScreen), findsOneWidget);
+      await tester.tap(find.byKey(const Key('details_back_button')));
+      await settle(tester);
+
+      final openDetails = tester
+          .widget<InkWell>(find.byKey(const Key('cat_details_button')))
+          .onTap!;
+      await tester.drag(
+        find.byKey(const Key('cat_card')),
+        const Offset(220, 0),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      // A second tap may arrive while part of the moving photo is still visible.
+      openDetails();
+      await settle(tester);
+      expect(find.byType(BreedDetailsScreen), findsNothing);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('like_counter'))).data,
+        '♥ 1',
+      );
+      expect(searches, 2);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
