@@ -1,6 +1,6 @@
 # Кототиндер — спецификация
 
-Актуальный контракт версии `1.0.0`. Источник: [ДЗ №1](https://georgfed.github.io/hse-flutter-course/assignments/hw1.html).
+Актуальный контракт версии `1.0.1`. Источник: [ДЗ №1](https://georgfed.github.io/hse-flutter-course/assignments/hw1.html).
 Траектория — с агентом. [Исходный план до реализации](https://github.com/Ognezvezdd/HSE_Flutter_HW1/blob/7273733/docs/SPEC.md)
 сохранён в истории Git. Изменения требований фиксируются до соответствующего кода.
 

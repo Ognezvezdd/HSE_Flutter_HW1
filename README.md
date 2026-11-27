@@ -3,7 +3,7 @@
 ## 1. Описание приложения
 
 Flutter-приложение со случайными котами из TheCatAPI: лента, детали кота,
-каталог и детали пород. Версия приложения — **1.0.0**.
+каталог и детали пород. Версия приложения — **1.0.1**.
 
 ## 2. Выполненный функционал
 
@@ -21,6 +21,8 @@ Flutter-приложение со случайными котами из TheCatA
 ## 3. Невыполненный функционал и известные проблемы
 
 В выполненных технических проверках незакрытых дефектов приложения не найдено.
+Формальное отступление от оформления: раздел 7 содержит развёрнутый авторский
+текст объёмом больше 5–10 предложений, предусмотренных заданием.
 [Результаты и границы проверок](docs/QUALITY_GATES.md).
 
 Сохранение использует `SharedPreferencesAsync`: данные привязаны к приложению,
@@ -31,7 +33,7 @@ Flutter-приложение со случайными котами из TheCatA
 
 ## 4. Скриншоты и/или видео
 
-Пять снимков реальной release-сборки `1.0.0` на Android с TheCatAPI:
+Пять снимков реальной release-сборки `1.0.1` на Android с TheCatAPI:
 
 <p>
   <img src="docs/screenshots/feed.png" width="180" alt="Лента котов">
@@ -43,13 +45,13 @@ Flutter-приложение со случайными котами из TheCatA
 
 ## 5. APK
 
-[Скачать APK 1.0.0](https://github.com/Ognezvezdd/HSE_Flutter_HW1/releases/download/v1.0.0/cat-tinder-1.0.0.apk)
-· [GitHub Release](https://github.com/Ognezvezdd/HSE_Flutter_HW1/releases/tag/v1.0.0)
-· [Исходники тега](https://github.com/Ognezvezdd/HSE_Flutter_HW1/tree/v1.0.0).
+[Скачать APK 1.0.1](https://github.com/Ognezvezdd/HSE_Flutter_HW1/releases/download/v1.0.1/cat-tinder-1.0.1.apk)
+· [GitHub Release](https://github.com/Ognezvezdd/HSE_Flutter_HW1/releases/tag/v1.0.1)
+· [Исходники тега](https://github.com/Ognezvezdd/HSE_Flutter_HW1/tree/v1.0.1).
 
 APK универсальный: `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 В Release приложены `SHA256SUMS` и `release.json` с точным commit исходников.
-Локальная копия комплекта — `build/releases/v1.0.0/`, исключена из Git.
+Локальная копия комплекта — `build/releases/v1.0.1/`, исключена из Git.
 
 ## 6. Запуск и проверки
 
@@ -87,7 +89,7 @@ flutter build apk --release --dart-define=CAT_API_KEY=YOUR_KEY --dart-define=CAT
 dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
-flutter build apk --release --dart-define-from-file=config.json
+flutter build apk --release --no-pub --dart-define-from-file=config.json
 flutter build web --release --dart-define-from-file=config.json
 ```
 
@@ -95,6 +97,12 @@ flutter build web --release --dart-define-from-file=config.json
 `dart analyze --fatal-infos lib test` работает; также проверен `flutter analyze`
 через временную ASCII-символическую ссылку на этот же проект. SDK не изменялся.
 JDK должен содержать `javac` и `jlink`; выбранный путь показывает `flutter doctor -v`.
+
+Проверки кода: форматирование без изменений, анализатор без замечаний, все
+68 автотестов прошли. На Android также пройдены 21 управляемый сценарий ошибок
+HTTPS API и проверка обычного release APK с настоящим TheCatAPI: установка,
+кнопки/свайпы, четыре экрана, Back, потеря сети, повтор и восстановление состояния.
+Проверенные commit и результаты перечислены в [журнале](docs/QUALITY_GATES.md).
 
 [Ручные и негативные проверки](docs/TESTING.md),
 [управляемые Android-проверки HTTPS API](tool/acceptance/README.md),
